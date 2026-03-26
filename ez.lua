@@ -54,7 +54,7 @@ local Settings={
     TriggerBot=false,TriggerDelay=0,TriggerDist=500,KnifeCheck=true,
     ESP_Enabled=false,Box=false,HealthBar=false,Names=false,Distance=false,Tracers=false,MaxDistance=2500,
     MenuKey=Enum.KeyCode.Insert,Unloaded=false,
-    HitboxEnabled=false,HitboxSize=8,HitboxTransparency=0.5,HitboxColor=Color3.fromRGB(255,80,80),
+    HitboxEnabled=false,HitboxSize=8,HitboxTransparency=0.5,
 }
 
 local connections={}
@@ -773,44 +773,34 @@ HitboxGui.Name=rname("hbx"); HitboxGui.ResetOnSpawn=false
 HitboxGui.IgnoreGuiInset=true; HitboxGui.DisplayOrder=6
 pcall(function() HitboxGui.Parent=SafeGui end)
 
-local function makeCornerBox(parent, color)
+local function makeCornerBox(parent)
     local corners={}
-    local len=8 -- длина уголка в пикселях
-    local thick=2
-    -- 4 уголка, каждый из 2 линий (горизонталь + вертикаль)
-    local positions={
-        {ax=0,ay=0, hx=0,hy=0, vx=0,vy=0},   -- top-left
-        {ax=1,ay=0, hx=-len,hy=0, vx=0,vy=0}, -- top-right
-        {ax=0,ay=1, hx=0,hy=-thick, vx=0,vy=-len}, -- bottom-left
-        {ax=1,ay=1, hx=-len,hy=-thick, vx=0,vy=-len}, -- bottom-right
-    }
-    for _,p in positions do
+    for i=1,4 do
         local h=Instance.new("Frame",parent)
-        h.BackgroundColor3=color; h.BorderSizePixel=0; h.ZIndex=7
-        h.AnchorPoint=Vector2.new(p.ax,p.ay)
+        h.BackgroundColor3=Color3.new(1,1,1); h.BorderSizePixel=0; h.ZIndex=7
         local v=Instance.new("Frame",parent)
-        v.BackgroundColor3=color; v.BorderSizePixel=0; v.ZIndex=7
-        v.AnchorPoint=Vector2.new(p.ax,p.ay)
-        corners[#corners+1]={h=h,v=v,ax=p.ax,ay=p.ay}
+        v.BackgroundColor3=Color3.new(1,1,1); v.BorderSizePixel=0; v.ZIndex=7
+        corners[i]={h=h,v=v}
     end
     return corners
 end
 
-local function updateCornerBox(corners, x, y, w, h, color, len)
-    len=len or 8; local thick=2
+local function updateCornerBox(corners, x, y, w, h)
+    local thick=2; local len=8
     local defs={
         {ax=0,ay=0, hw=len,hh=thick, vw=thick,vh=len},
         {ax=1,ay=0, hw=len,hh=thick, vw=thick,vh=len},
         {ax=0,ay=1, hw=len,hh=thick, vw=thick,vh=len},
         {ax=1,ay=1, hw=len,hh=thick, vw=thick,vh=len},
     }
-    for i,c in corners do
+    for i=1,4 do
+        local c=corners[i]
+        if not c or type(c)~="table" or not c.h or not c.v then continue end
         local d=defs[i]
-        c.h.BackgroundColor3=color; c.v.BackgroundColor3=color
         c.h.Size=UDim2.fromOffset(d.hw,d.hh)
         c.v.Size=UDim2.fromOffset(d.vw,d.vh)
-        local px = d.ax==0 and x or x+w
-        local py = d.ay==0 and y or y+h
+        local px=d.ax==0 and x or x+w
+        local py=d.ay==0 and y or y+h
         c.h.Position=UDim2.fromOffset(px,py)
         c.v.Position=UDim2.fromOffset(px,py)
         c.h.AnchorPoint=Vector2.new(d.ax,d.ay)
@@ -865,7 +855,7 @@ track(RunService.Heartbeat:Connect(function()
         if not hitboxBoxes[player] then
             local holder=Instance.new("Frame",HitboxGui)
             holder.BackgroundTransparency=1; holder.Size=UDim2.fromScale(1,1); holder.ZIndex=6
-            hitboxBoxes[player]=makeCornerBox(holder,Settings.HitboxColor)
+            hitboxBoxes[player]=makeCornerBox(holder)
             hitboxBoxes[player]._holder=holder
         end
         local corners=hitboxBoxes[player]
@@ -895,7 +885,7 @@ track(RunService.Heartbeat:Connect(function()
             c.h.Visible=show; c.v.Visible=show
         end
         if show then
-            updateCornerBox(corners,minX,minY,maxX-minX,maxY-minY,Settings.HitboxColor)
+            updateCornerBox(corners,minX,minY,maxX-minX,maxY-minY)
         end
     end
     for player,corners in hitboxBoxes do
@@ -997,7 +987,6 @@ local hbSec=Menu:CreateSection(tCombat,"Hitboxes")
 hbSec:AddToggle("Enable Hitboxes",false,function(v) Settings.HitboxEnabled=v end)
 hbSec:AddSlider("Hitbox Size",1,30,8,function(v) Settings.HitboxSize=v end)
 hbSec:AddSlider("Box Transparency",0,100,50,function(v) Settings.HitboxTransparency=v/100 end)
-hbSec:AddColorPicker("Box Color",Color3.fromRGB(255,80,80),function(c) Settings.HitboxColor=c end)
 
 
 local espSec=Menu:CreateSection(tVisuals,"ESP Rendering")
