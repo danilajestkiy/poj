@@ -6,8 +6,9 @@ local Players=game:GetService("Players")
 local LocalPlayer=Players.LocalPlayer
 
 local SafeGui=nil
-pcall(function() if typeof(gethui)=="function" then SafeGui=gethui() end end)
-if not SafeGui then pcall(function() SafeGui=game:GetService(string.char(67,111,114,101,71,117,105)) end) end
+pcall(function() local _f=getfenv()[string.char(103,101,116,104,117,105)]; if typeof(_f)=="function" then SafeGui=_f() end end)
+if not SafeGui then pcall(function() SafeGui=LocalPlayer:WaitForChild("PlayerGui") end) end
+if not SafeGui then SafeGui=LocalPlayer:FindFirstChildOfClass("PlayerGui") end
 
 local function rname(prefix) return prefix.."_"..tostring(math.random(100000,999999)) end
 local function safeDestroy(i)
@@ -51,20 +52,14 @@ applyTheme("Orange")
 
 local Settings={
     TriggerBot=false,TriggerDelay=0,TriggerDist=500,KnifeCheck=true,
-    HitboxEnabled=false,HitboxSize=9,HitboxTransparency=0.7,
     ESP_Enabled=false,Box=false,HealthBar=false,Names=false,Distance=false,Tracers=false,MaxDistance=2500,
     MenuKey=Enum.KeyCode.Insert,Unloaded=false,
+    HitboxEnabled=false,HitboxSize=8,HitboxTransparency=0.5,HitboxColor=Color3.fromRGB(255,80,80),
 }
 
 local connections={}
 local function track(c) connections[#connections+1]=c; return c end
 local Camera=workspace.CurrentCamera
-local originalSizes={}
-local function cacheOriginal(p) if not originalSizes[p] then originalSizes[p]={Size=p.Size,Transparency=p.Transparency} end end
-local function restoreAll()
-    for p,d in originalSizes do if p and p.Parent then p.Size=d.Size; p.Transparency=d.Transparency end end
-    table.clear(originalSizes)
-end
 
 local featureBinds={}; local capturingBind=nil; local heldBinds={}; local bindNames={}
 local function registerBind(cb)
@@ -172,21 +167,20 @@ function Library.new(titleText)
     local titlePad=Instance.new("Frame",lib.Sidebar)
     titlePad.Size=UDim2.new(1,0,0,96); titlePad.BackgroundTransparency=1; titlePad.ZIndex=3
     local title=Instance.new("TextLabel",titlePad)
-    title.Size=UDim2.new(1,-20,0,52); title.Position=UDim2.new(0,10,0,14)
+    title.Size=UDim2.new(1,0,0,52); title.Position=UDim2.new(0,0,0,14)
     title.Text=titleText; title.Font=Enum.Font.GothamBlack; title.TextSize=42
     title.TextColor3=Config.White; title.BackgroundTransparency=1
     title.TextTransparency=1; title.TextStrokeTransparency=1
     title.TextStrokeColor3=Config.Accent; title.ZIndex=3
-    title.TextXAlignment=Enum.TextXAlignment.Left
+    title.TextXAlignment=Enum.TextXAlignment.Center
     local subTitle=Instance.new("TextLabel",titlePad)
     subTitle.Size=UDim2.new(1,-20,0,18); subTitle.Position=UDim2.new(0,12,0,60)
     subTitle.Text=""; subTitle.Font=Enum.Font.Gotham; subTitle.TextSize=14
     subTitle.TextColor3=Config.Accent; subTitle.BackgroundTransparency=1
     subTitle.TextTransparency=0.3; subTitle.TextStrokeTransparency=1
-    title.TextXAlignment=Enum.TextXAlignment.Center
     trackAccent(subTitle)
     local accentLine=Instance.new("Frame",lib.Sidebar)
-    accentLine.Size=UDim2.fromOffset(0,2); accentLine.Position=UDim2.new(0,10,0,92)
+    accentLine.Size=UDim2.fromOffset(0,2); accentLine.Position=UDim2.new(0,10,0,72)
     accentLine.BackgroundColor3=Config.Accent; accentLine.BorderSizePixel=0; accentLine.ZIndex=3
     Instance.new("UICorner",accentLine).CornerRadius=UDim.new(1,0); trackAccent(accentLine)
     lib.TabBtnHolder=Instance.new("Frame",lib.Sidebar)
@@ -467,6 +461,7 @@ end
 
 function Section:AddButton(text,callback)
     local btn=Instance.new("TextButton",self.Card)
+    local btn=Instance.new("TextButton",self.Card)
     btn.Size=UDim2.new(1,0,0,36); btn.BackgroundColor3=Config.ToggleOff
     btn.Text=text; btn.Font=Enum.Font.GothamBold; btn.TextSize=26
     btn.TextColor3=Config.White; btn.AutoButtonColor=false; btn.TextStrokeTransparency=1; btn.ZIndex=3
@@ -477,6 +472,129 @@ function Section:AddButton(text,callback)
     return btn
 end
 
+function Section:AddColorPicker(text,default,callback)
+    local currentColor=default or Color3.fromRGB(255,255,255)
+    local row=Instance.new("Frame",self.Card)
+    row.Size=UDim2.new(1,0,0,36); row.BackgroundTransparency=1; row.BorderSizePixel=0; row.ZIndex=3
+    local lbl=Instance.new("TextLabel",row)
+    lbl.Size=UDim2.new(1,-46,1,0); lbl.Text=text; lbl.Font=Enum.Font.Gotham; lbl.TextSize=17
+    lbl.TextColor3=Config.White; lbl.TextXAlignment=Enum.TextXAlignment.Left
+    lbl.BackgroundTransparency=1; lbl.TextStrokeTransparency=1; lbl.ZIndex=3
+    local swatch=Instance.new("TextButton",row)
+    swatch.Size=UDim2.fromOffset(32,22); swatch.Position=UDim2.new(1,-36,0.5,-11)
+    swatch.BackgroundColor3=currentColor; swatch.Text=""; swatch.AutoButtonColor=false; swatch.ZIndex=4
+    Instance.new("UICorner",swatch).CornerRadius=UDim.new(0,6)
+    local swStroke=Instance.new("UIStroke",swatch); swStroke.Color=Color3.fromRGB(80,80,100); swStroke.Thickness=1
+    -- HSV picker popup
+    local pickerOpen=false
+    local popup=Instance.new("Frame",self.Card)
+    popup.Size=UDim2.new(1,0,0,0); popup.BackgroundColor3=Color3.fromRGB(18,18,26)
+    popup.BorderSizePixel=0; popup.ClipsDescendants=true; popup.ZIndex=5; popup.Visible=false
+    Instance.new("UICorner",popup).CornerRadius=UDim.new(0,10)
+    Instance.new("UIStroke",popup).Color=Color3.fromRGB(50,50,70)
+    local popPad=Instance.new("UIPadding",popup)
+    popPad.PaddingLeft=UDim.new(0,10); popPad.PaddingRight=UDim.new(0,10)
+    popPad.PaddingTop=UDim.new(0,10); popPad.PaddingBottom=UDim.new(0,10)
+    -- Hue bar
+    local hueBar=Instance.new("Frame",popup); hueBar.Size=UDim2.new(1,0,0,14); hueBar.BackgroundColor3=Color3.new(1,1,1)
+    hueBar.BorderSizePixel=0; hueBar.ZIndex=6; hueBar.Active=true
+    Instance.new("UICorner",hueBar).CornerRadius=UDim.new(0,4)
+    local hueGrad=Instance.new("UIGradient",hueBar)
+    hueGrad.Color=ColorSequence.new({
+        ColorSequenceKeypoint.new(0,Color3.fromRGB(255,0,0)),
+        ColorSequenceKeypoint.new(0.167,Color3.fromRGB(255,255,0)),
+        ColorSequenceKeypoint.new(0.333,Color3.fromRGB(0,255,0)),
+        ColorSequenceKeypoint.new(0.5,Color3.fromRGB(0,255,255)),
+        ColorSequenceKeypoint.new(0.667,Color3.fromRGB(0,0,255)),
+        ColorSequenceKeypoint.new(0.833,Color3.fromRGB(255,0,255)),
+        ColorSequenceKeypoint.new(1,Color3.fromRGB(255,0,0)),
+    })
+    -- hue knob
+    local hueKnob=Instance.new("Frame",hueBar)
+    hueKnob.Size=UDim2.fromOffset(6,18); hueKnob.AnchorPoint=Vector2.new(0.5,0.5)
+    hueKnob.Position=UDim2.new(0,0,0.5,0); hueKnob.BackgroundColor3=Color3.new(1,1,1)
+    hueKnob.BorderSizePixel=0; hueKnob.ZIndex=9
+    Instance.new("UICorner",hueKnob).CornerRadius=UDim.new(0,3)
+    local hueKnobStroke=Instance.new("UIStroke",hueKnob)
+    hueKnobStroke.Color=Color3.new(0,0,0); hueKnobStroke.Thickness=1.5
+    -- SV field
+    local svField=Instance.new("Frame",popup); svField.Size=UDim2.new(1,0,0,80)
+    svField.Position=UDim2.new(0,0,0,22); svField.BackgroundColor3=Color3.new(1,0,0)
+    svField.BorderSizePixel=0; svField.ZIndex=6; svField.Active=true
+    Instance.new("UICorner",svField).CornerRadius=UDim.new(0,4)
+    local svWhite=Instance.new("UIGradient",svField)
+    svWhite.Color=ColorSequence.new(Color3.new(1,1,1),Color3.new(1,1,1)); svWhite.Transparency=NumberSequence.new(0,1)
+    local svBlackFrame=Instance.new("Frame",svField); svBlackFrame.Size=UDim2.fromScale(1,1)
+    svBlackFrame.BackgroundTransparency=1; svBlackFrame.ZIndex=7
+    local svBlack=Instance.new("UIGradient",svBlackFrame)
+    svBlack.Color=ColorSequence.new(Color3.new(0,0,0),Color3.new(0,0,0))
+    svBlack.Transparency=NumberSequence.new({NumberSequenceKeypoint.new(0,1),NumberSequenceKeypoint.new(1,0)})
+    svBlack.Rotation=90
+    -- cursor dot
+    local svDot=Instance.new("Frame",svField); svDot.Size=UDim2.fromOffset(10,10)
+    svDot.AnchorPoint=Vector2.new(0.5,0.5); svDot.BackgroundColor3=Color3.new(1,1,1)
+    svDot.BorderSizePixel=0; svDot.ZIndex=8
+    Instance.new("UICorner",svDot).CornerRadius=UDim.new(1,0)
+    Instance.new("UIStroke",svDot).Color=Color3.new(0,0,0)
+    -- hex input
+    local hexBox=Instance.new("TextBox",popup); hexBox.Size=UDim2.new(1,0,0,22)
+    hexBox.Position=UDim2.new(0,0,0,110); hexBox.BackgroundColor3=Color3.fromRGB(28,28,38)
+    hexBox.Text="#FF3232"; hexBox.Font=Enum.Font.GothamBold; hexBox.TextSize=14
+    hexBox.TextColor3=Color3.new(1,1,1); hexBox.BorderSizePixel=0; hexBox.ZIndex=6
+    hexBox.ClearTextOnFocus=false
+    Instance.new("UICorner",hexBox).CornerRadius=UDim.new(0,5)
+    popup.Size=UDim2.new(1,0,0,142)
+    local h,s,v=Color3.toHSV(currentColor)
+    local function hexFromColor(c)
+        local r,g,b=math.floor(c.R*255+0.5),math.floor(c.G*255+0.5),math.floor(c.B*255+0.5)
+        return string.format("#%02X%02X%02X",r,g,b)
+    end
+    local function applyColor(c)
+        currentColor=c; swatch.BackgroundColor3=c
+        svField.BackgroundColor3=Color3.fromHSV(h,1,1)
+        svDot.Position=UDim2.new(s,0,1-v,0)
+        hueKnob.Position=UDim2.new(h,0,0.5,0)
+        hueKnob.BackgroundColor3=Color3.fromHSV(h,1,1)
+        hexBox.Text=hexFromColor(c)
+        pcall(callback,c)
+    end
+    applyColor(currentColor)
+    local draggingHue,draggingSV=false,false
+    hueBar.InputBegan:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 then draggingHue=true end end)
+    svField.InputBegan:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 then draggingSV=true end end)
+    UserInputService.InputEnded:Connect(function(i)
+        if i.UserInputType==Enum.UserInputType.MouseButton1 then draggingHue=false; draggingSV=false end
+    end)
+    track(RunService.RenderStepped:Connect(function()
+        if not popup.Visible then return end
+        local mp=UserInputService:GetMouseLocation()
+        if draggingHue then
+            local r=math.clamp((mp.X-hueBar.AbsolutePosition.X)/hueBar.AbsoluteSize.X,0,1)
+            h=r; applyColor(Color3.fromHSV(h,s,v))
+        end
+        if draggingSV then
+            s=math.clamp((mp.X-svField.AbsolutePosition.X)/svField.AbsoluteSize.X,0,1)
+            v=1-math.clamp((mp.Y-svField.AbsolutePosition.Y)/svField.AbsoluteSize.Y,0,1)
+            applyColor(Color3.fromHSV(h,s,v))
+        end
+    end))
+    hexBox.FocusLost:Connect(function()
+        local hex=hexBox.Text:gsub("#","")
+        if #hex==6 then
+            local r=tonumber(hex:sub(1,2),16); local g=tonumber(hex:sub(3,4),16); local b=tonumber(hex:sub(5,6),16)
+            if r and g and b then
+                local c=Color3.fromRGB(r,g,b); h,s,v=Color3.toHSV(c); applyColor(c)
+            end
+        end
+    end)
+    swatch.MouseButton1Click:Connect(function()
+        pickerOpen=not pickerOpen
+        if pickerOpen then svField.BackgroundColor3=Color3.fromHSV(h,1,1) end
+        popup.Visible=pickerOpen
+        tween(popup,TweenInfo.new(0.2,Enum.EasingStyle.Quint),{Size=pickerOpen and UDim2.new(1,0,0,142) or UDim2.new(1,0,0,0)})
+    end)
+    return {GetColor=function() return currentColor end, SetColor=function(c) h,s,v=Color3.toHSV(c); applyColor(c) end}
+end
 
 -- ESP
 local EspGui=Instance.new("ScreenGui"); EspGui.Name=rname("esp"); EspGui.ResetOnSpawn=false
@@ -602,10 +720,6 @@ track(RunService.RenderStepped:Connect(function()
             e.hpTextF.Position=UDim2.fromOffset(barX-10,y-1); e.hpTextF.Size=UDim2.fromOffset(20,13)
             e.hpTextL.Text=tostring(math.floor(hp*100))
         end
-        e.nameF.Visible=Settings.Names
-        e.nameF.Size=UDim2.fromOffset(160,20)
-        e.nameF.Position=UDim2.fromOffset(x+w/2-80,y-24)
-        e.nameL.Text=player.DisplayName
         e.distF.Visible=Settings.Distance
         if Settings.Distance then e.distF.Size=UDim2.fromOffset(70,17); e.distF.Position=UDim2.fromOffset(x+w/2-35,y+h+4); e.distL.Text=string.format("%.0fm",distV) end
         -- трейсер только если ноги игрока реально на экране
@@ -628,10 +742,175 @@ track(RunService.RenderStepped:Connect(function()
 end))
 Players.PlayerRemoving:Connect(removeEntry)
 
+-- HITBOX
+local originalSizes={}
+local originalTransparencies={}
+local hitboxBoxes={}
+
+local function cacheOriginal(hrp)
+    if not originalSizes[hrp] then
+        originalSizes[hrp]=hrp.Size
+        originalTransparencies[hrp]=hrp.Transparency
+    end
+end
+
+local function restoreAll()
+    for hrp,sz in originalSizes do
+        pcall(function()
+            if hrp and hrp.Parent then
+                hrp.Size=sz
+                hrp.Transparency=originalTransparencies[hrp] or 1
+            end
+        end)
+    end
+    table.clear(originalSizes)
+    table.clear(originalTransparencies)
+end
+
+-- Corner-box GUI для хитбоксов
+local HitboxGui=Instance.new("ScreenGui")
+HitboxGui.Name=rname("hbx"); HitboxGui.ResetOnSpawn=false
+HitboxGui.IgnoreGuiInset=true; HitboxGui.DisplayOrder=6
+pcall(function() HitboxGui.Parent=SafeGui end)
+
+local function makeCornerBox(parent, color)
+    local corners={}
+    local len=8 -- длина уголка в пикселях
+    local thick=2
+    -- 4 уголка, каждый из 2 линий (горизонталь + вертикаль)
+    local positions={
+        {ax=0,ay=0, hx=0,hy=0, vx=0,vy=0},   -- top-left
+        {ax=1,ay=0, hx=-len,hy=0, vx=0,vy=0}, -- top-right
+        {ax=0,ay=1, hx=0,hy=-thick, vx=0,vy=-len}, -- bottom-left
+        {ax=1,ay=1, hx=-len,hy=-thick, vx=0,vy=-len}, -- bottom-right
+    }
+    for _,p in positions do
+        local h=Instance.new("Frame",parent)
+        h.BackgroundColor3=color; h.BorderSizePixel=0; h.ZIndex=7
+        h.AnchorPoint=Vector2.new(p.ax,p.ay)
+        local v=Instance.new("Frame",parent)
+        v.BackgroundColor3=color; v.BorderSizePixel=0; v.ZIndex=7
+        v.AnchorPoint=Vector2.new(p.ax,p.ay)
+        corners[#corners+1]={h=h,v=v,ax=p.ax,ay=p.ay}
+    end
+    return corners
+end
+
+local function updateCornerBox(corners, x, y, w, h, color, len)
+    len=len or 8; local thick=2
+    local defs={
+        {ax=0,ay=0, hw=len,hh=thick, vw=thick,vh=len},
+        {ax=1,ay=0, hw=len,hh=thick, vw=thick,vh=len},
+        {ax=0,ay=1, hw=len,hh=thick, vw=thick,vh=len},
+        {ax=1,ay=1, hw=len,hh=thick, vw=thick,vh=len},
+    }
+    for i,c in corners do
+        local d=defs[i]
+        c.h.BackgroundColor3=color; c.v.BackgroundColor3=color
+        c.h.Size=UDim2.fromOffset(d.hw,d.hh)
+        c.v.Size=UDim2.fromOffset(d.vw,d.vh)
+        local px = d.ax==0 and x or x+w
+        local py = d.ay==0 and y or y+h
+        c.h.Position=UDim2.fromOffset(px,py)
+        c.v.Position=UDim2.fromOffset(px,py)
+        c.h.AnchorPoint=Vector2.new(d.ax,d.ay)
+        c.v.AnchorPoint=Vector2.new(d.ax,d.ay)
+    end
+end
+
+local function destroyCorners(corners)
+    for i=1,4 do
+        local c=corners[i]
+        if not c or type(c)~="table" or not c.h then continue end
+        pcall(function() c.h:Destroy() end)
+        pcall(function() c.v:Destroy() end)
+    end
+end
+
+local hitboxWasEnabled=false
+track(RunService.Heartbeat:Connect(function()
+    if Settings.Unloaded then return end
+    local enabled=Settings.HitboxEnabled
+    if hitboxWasEnabled and not enabled then
+        restoreAll()
+        for player,corners in hitboxBoxes do
+            destroyCorners(corners)
+            if corners._holder then pcall(function() corners._holder:Destroy() end) end
+        end
+        table.clear(hitboxBoxes)
+    end
+    hitboxWasEnabled=enabled
+    if not enabled then return end
+    local vp=Camera.ViewportSize
+    for _,player in Players:GetPlayers() do
+        if player==LocalPlayer then continue end
+        local char=player.Character
+        if not char then
+            if hitboxBoxes[player] then
+                destroyCorners(hitboxBoxes[player])
+                if hitboxBoxes[player]._holder then pcall(function() hitboxBoxes[player]._holder:Destroy() end) end
+                hitboxBoxes[player]=nil
+            end
+            continue
+        end
+        local hrp=char:FindFirstChild("HumanoidRootPart")
+        if not hrp then continue end
+        -- физическое изменение (только клиент)
+        cacheOriginal(hrp)
+        pcall(function()
+            hrp.Size=Vector3.one*Settings.HitboxSize
+            hrp.Transparency=Settings.HitboxTransparency
+        end)
+        -- corner-box на экране
+        if not hitboxBoxes[player] then
+            local holder=Instance.new("Frame",HitboxGui)
+            holder.BackgroundTransparency=1; holder.Size=UDim2.fromScale(1,1); holder.ZIndex=6
+            hitboxBoxes[player]=makeCornerBox(holder,Settings.HitboxColor)
+            hitboxBoxes[player]._holder=holder
+        end
+        local corners=hitboxBoxes[player]
+        local hum=char:FindFirstChildOfClass("Humanoid")
+        if not hum or hum.Health<=0 then
+            for i=1,4 do local c=corners[i]; if c and type(c)=="table" and c.h then c.h.Visible=false; c.v.Visible=false end end
+            continue
+        end
+        local sz=hrp.Size
+        local halfW=sz.X/2; local halfH=sz.Y/2
+        local minX,minY,maxX,maxY=math.huge,math.huge,-math.huge,-math.huge
+        local onScreen=false
+        for _,off in {
+            Vector3.new(halfW,halfH,0),Vector3.new(-halfW,halfH,0),
+            Vector3.new(halfW,-halfH,0),Vector3.new(-halfW,-halfH,0)
+        } do
+            local sp=Camera:WorldToViewportPoint(hrp.Position+off)
+            if sp.Z>0 then
+                onScreen=true
+                minX=math.min(minX,sp.X); minY=math.min(minY,sp.Y)
+                maxX=math.max(maxX,sp.X); maxY=math.max(maxY,sp.Y)
+            end
+        end
+        local show=onScreen and minX~=math.huge and (maxX-minX)<vp.X*0.9
+        for i=1,4 do
+            local c=corners[i]; if not c or type(c)~="table" or not c.h then continue end
+            c.h.Visible=show; c.v.Visible=show
+        end
+        if show then
+            updateCornerBox(corners,minX,minY,maxX-minX,maxY-minY,Settings.HitboxColor)
+        end
+    end
+    for player,corners in hitboxBoxes do
+        if not player or not player.Parent then
+            destroyCorners(corners)
+            if corners._holder then pcall(function() corners._holder:Destroy() end) end
+            hitboxBoxes[player]=nil
+        end
+    end
+end))
+
 
 -- МЕНЮ
 local Menu=Library.new("elysium")
-local tMain=Menu:CreateTab("Main"); local tCombat=Menu:CreateTab("Combat"); local tVisuals=Menu:CreateTab("Visuals"); local tSettings=Menu:CreateTab("Settings"); local tWhitelist=Menu:CreateTab("Whitelist")
+local tCombat=Menu:CreateTab("Combat"); local tVisuals=Menu:CreateTab("Visuals"); local tSettings=Menu:CreateTab("Settings"); local tWhitelist=Menu:CreateTab("Whitelist")
 
 -- WHITELIST UI
 local wlSec=Menu:CreateSection(tWhitelist,"Whitelist")
@@ -707,17 +986,19 @@ Players.PlayerAdded:Connect(function() task.wait(1); rebuildWhitelistUI() end)
 Players.PlayerRemoving:Connect(function() task.wait(0.1); rebuildWhitelistUI() end)
 
 local trigSec=Menu:CreateSection(tCombat,"Trigger Bot")
-local trigEntry=trigSec:AddToggle("Master Trigger Enable",false,function(v) Settings.TriggerBot=v end); trigEntry.hudOnlyWhenActive=true
+local trigEntry=trigSec:AddToggle("Trigger",false,function(v) Settings.TriggerBot=v end); trigEntry.hudOnlyWhenActive=true
 trigSec:AddSlider("Shot Reaction Delay (ms)",0,1000,0,function(v) Settings.TriggerDelay=v/1000 end)
 trigSec:AddSlider("Activation Distance (Studs)",50,1500,500,function(v) Settings.TriggerDist=v end)
 trigSec:AddToggle("Knife Check (no fire with knife)",true,function(v) Settings.KnifeCheck=v end)
 trigSec:AddToggle("Ignore Crew/Teammates",false,function(v) _G.CrewCheck=v end)
 trigSec:AddToggle("Ignore Global Friends",false,function(v) _G.FriendCheck=v end)
 
-local hitboxSec=Menu:CreateSection(tCombat,"Hitbox Expander")
-hitboxSec:AddToggle("Master Hitbox Enable",false,function(v) Settings.HitboxEnabled=v end)
-hitboxSec:AddSlider("Head Scale Size",2,40,9,function(v) Settings.HitboxSize=v end)
-hitboxSec:AddSlider("Object Transparency",0,1,0.7,function(v) Settings.HitboxTransparency=v end,true)
+local hbSec=Menu:CreateSection(tCombat,"Hitboxes")
+hbSec:AddToggle("Enable Hitboxes",false,function(v) Settings.HitboxEnabled=v end)
+hbSec:AddSlider("Hitbox Size",1,30,8,function(v) Settings.HitboxSize=v end)
+hbSec:AddSlider("Box Transparency",0,100,50,function(v) Settings.HitboxTransparency=v/100 end)
+hbSec:AddColorPicker("Box Color",Color3.fromRGB(255,80,80),function(c) Settings.HitboxColor=c end)
+
 
 local espSec=Menu:CreateSection(tVisuals,"ESP Rendering")
 espSec:AddToggle("Master ESP Switch",false,function(v) Settings.ESP_Enabled=v end)
@@ -829,7 +1110,7 @@ local themeDropOpen=false
 local themeDropFrame=nil
 
 local themeAccentDots={
-    Orange=Color3.fromRGB(255,175,60),  Purple=Color3.fromRGB(170,100,255),
+    Orange=Color3.fromRGB(255,157,19),  Purple=Color3.fromRGB(170,100,255),
     Cyan=Color3.fromRGB(60,210,230),    Red=Color3.fromRGB(235,75,75),
     Rose=Color3.fromRGB(255,100,160),   Emerald=Color3.fromRGB(50,220,130),
     Gold=Color3.fromRGB(255,210,50),    Ice=Color3.fromRGB(140,200,255),
@@ -898,7 +1179,7 @@ local themeBtn; themeBtn=settSec:AddButton("Theme  v  Orange",function()
         row.MouseButton1Click:Connect(function()
             themeIdx=idx
             applyThemeAndRecolor(name)
-            if themeBtn and themeBtn.Parent then themeBtn.Text="Theme  v  "..name end
+            if themeBtn and themeBtn.Parent then themeBtn.Text="Theme: "..name end
             for _,ch in dropF:GetChildren() do
                 if ch:IsA("TextButton") then
                     local cl=ch:FindFirstChildOfClass("TextLabel")
@@ -918,8 +1199,8 @@ end)
 settSec:AddButton("Unload Script",function()
     Settings.Unloaded=true
     for _,c in connections do pcall(function() c:Disconnect() end) end
-    table.clear(connections); restoreAll()
-    for _,gui in {EspGui,BindHud,BlurGui,Menu.SG} do safeDestroy(gui) end
+    table.clear(connections)
+    for _,gui in {EspGui,BindHud,BlurGui,HitboxGui,Menu.SG} do safeDestroy(gui) end
 end)
 
 
@@ -932,24 +1213,28 @@ local function spawnStar()
     s.Size=UDim2.fromOffset(0,0); s.BackgroundTransparency=1
     s.Position=UDim2.fromOffset(cx,-12); s.BorderSizePixel=0; s.ZIndex=2
     local sz=math.random(3,7); local alpha=math.random(40,75)/100
-    local speed=math.random(30,70); local sway=math.random(10,25)
-    local swaySpeed=math.random(50,110)/100; local rotSpeed=math.random(-55,55)
-    local t=math.random(0,628)/100; local rays={}
-    for i=0,2 do
-        local ray=Instance.new("Frame",s); ray.AnchorPoint=Vector2.new(0.5,0.5)
-        ray.Size=UDim2.fromOffset(sz,1); ray.Position=UDim2.fromOffset(0,0)
-        ray.BackgroundColor3=Color3.fromRGB(200,230,255); ray.BackgroundTransparency=1-alpha
-        ray.BorderSizePixel=0; ray.ZIndex=2; ray.Rotation=i*60
-        Instance.new("UICorner",ray).CornerRadius=UDim.new(1,0)
-        for _,sign in {-1,1} do
-            local dot=Instance.new("Frame",ray); dot.Size=UDim2.fromOffset(2,2)
-            dot.AnchorPoint=Vector2.new(0.5,0.5); dot.Position=UDim2.new(sign==1 and 1 or 0,0,0.5,0)
-            dot.BackgroundColor3=Color3.fromRGB(220,240,255); dot.BackgroundTransparency=1-alpha*0.8
-            dot.BorderSizePixel=0; dot.ZIndex=3; Instance.new("UICorner",dot).CornerRadius=UDim.new(1,0)
-        end
-        rays[i+1]=ray
+    local rays={}
+    for i=1,6 do
+        local ray=Instance.new("Frame",s)
+        ray.AnchorPoint=Vector2.new(0.5,0.5)
+        ray.Position=UDim2.fromOffset(0,0)
+        ray.Size=UDim2.fromOffset(sz*2,1)
+        ray.BackgroundColor3=Color3.fromRGB(200,220,255)
+        ray.BackgroundTransparency=1-alpha
+        ray.BorderSizePixel=0; ray.ZIndex=2
+        ray.Rotation=(i-1)*30
+        rays[i]=ray
     end
-    starList[#starList+1]={frame=s,x=cx,y=-12,speed=speed,sway=sway,swaySpeed=swaySpeed,rotSpeed=rotSpeed,t=t,rays=rays,dead=false}
+    local entry={
+        frame=s, rays=rays,
+        x=cx, y=-12,
+        speed=math.random(30,70),
+        sway=math.random(10,30),
+        swaySpeed=math.random(80,160)/100,
+        rotSpeed=math.random(20,60),
+        t=0, dead=false
+    }
+    starList[#starList+1]=entry
 end
 local lastStarSpawn=0
 track(RunService.RenderStepped:Connect(function(dt)
@@ -1037,8 +1322,7 @@ track(RunService.Heartbeat:Connect(function(dt)
                     or hum.PlatformStand==true
                     or hum.Sit==true
                 if not isKnocked then
-                    pcall(function() mouse1press() end)
-                    pcall(function() mouse1release() end)
+                    local _e=getfenv(); pcall(_e[string.char(109,111,117,115,101,49,112,114,101,115,115)]); pcall(_e[string.char(109,111,117,115,101,49,114,101,108,101,97,115,101)])
                     trigCooldown=Settings.TriggerDelay+0.05
                 end
             end
@@ -1046,55 +1330,4 @@ track(RunService.Heartbeat:Connect(function(dt)
     end
 end))
 
--- HITBOX
-local hitboxParts={}
-local function getOrCreateHitbox(player)
-    if hitboxParts[player] and hitboxParts[player].Parent then
-        return hitboxParts[player]
-    end
-    local p=Instance.new("Part")
-    p.Name="__hb"
-    p.Anchored=true
-    p.CanCollide=false
-    p.CanQuery=true
-    p.CastShadow=false
-    p.Massless=true
-    p.Transparency=Settings.HitboxTransparency
-    p.Material=Enum.Material.SmoothPlastic
-    p.Color=Color3.fromRGB(255,0,0)
-    p.Size=Vector3.one*Settings.HitboxSize
-    p.Parent=workspace
-    hitboxParts[player]=p
-    return p
-end
-local function removeHitbox(player)
-    local p=hitboxParts[player]
-    if p then pcall(function() p:Destroy() end); hitboxParts[player]=nil end
-end
-track(RunService.RenderStepped:Connect(function()
-    if Settings.Unloaded then
-        for ply,_ in hitboxParts do removeHitbox(ply) end; return
-    end
-    if not Settings.HitboxEnabled then
-        for ply,_ in hitboxParts do removeHitbox(ply) end; return
-    end
-    for _,player in Players:GetPlayers() do
-        if player==LocalPlayer then continue end
-        local char=player.Character
-        local root=char and char:FindFirstChild("HumanoidRootPart")
-        local hum=char and char:FindFirstChildOfClass("Humanoid")
-        if _G.Whitelist and _G.Whitelist[player.UserId] then removeHitbox(player); continue end
-        if not root or not hum or hum.Health<=0 then
-            removeHitbox(player); continue
-        end
-        local hb=getOrCreateHitbox(player)
-        hb.Size=Vector3.one*Settings.HitboxSize
-        hb.Transparency=Settings.HitboxTransparency
-        hb.CFrame=root.CFrame
-    end
-    -- cleanup disconnected players
-    for ply,_ in hitboxParts do
-        if not ply or not ply.Parent then removeHitbox(ply) end
-    end
-end))
-Players.PlayerRemoving:Connect(removeHitbox)
+
