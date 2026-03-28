@@ -23,7 +23,12 @@ local function tween(inst,info,props)
     if ok2 and t then pcall(function() t:Play() end) end
 end
 
-_G.FriendCheck=false; _G.CrewCheck=false
+local GuiService=game:GetService("GuiService")
+local function getMousePos()
+    local mp=UserInputService:GetMouseLocation()
+    local inset=GuiService:GetGuiInset()
+    return Vector2.new(mp.X, mp.Y-inset.Y)
+end
 
 local Themes={
     Orange  ={Accent=Color3.fromRGB(255,175,60),  MainBg=Color3.fromRGB(15,15,19),  SidebarBg=Color3.fromRGB(11,11,15), CardBg=Color3.fromRGB(20,20,26),  Stroke=Color3.fromRGB(40,40,52),  ToggleOff=Color3.fromRGB(36,36,44),  SliderBar=Color3.fromRGB(30,30,38)},
@@ -67,7 +72,7 @@ local function registerBind(cb)
     featureBinds[#featureBinds+1]=e; return e
 end
 
--- Проверка: держит ли LocalPlayer нож
+-- :   LocalPlayer 
 local function isHoldingKnife()
     local char=LocalPlayer.Character; if not char then return false end
     local tool=char:FindFirstChildOfClass("Tool"); if not tool then return false end
@@ -96,7 +101,7 @@ local function recolorAll()
     for _,i in accentElements do
         if not i then continue end
         if type(i)=="table" then
-            -- это pill от тогла
+            --  pill  
             if i._pill and i._pill.Parent then
                 i._pill.BackgroundColor3=i._state() and Config.Accent or Config.ToggleOff
             end
@@ -240,10 +245,12 @@ function Library:SetVisible(v)
         end)
         enableBlur()
     else
-        tween(self.Main,TweenInfo.new(0.22,Enum.EasingStyle.Quint,Enum.EasingDirection.In),{BackgroundTransparency=1,Size=UDim2.fromOffset(860,590),Position=UDim2.new(0.5,-430,0.51,-295)})
+        if themeDropFrame and themeDropFrame.Parent then themeDropFrame:Destroy(); themeDropFrame=nil; themeDropOpen=false end
+        tween(self.Main,TweenInfo.new(0.28,Enum.EasingStyle.Back,Enum.EasingDirection.In),{BackgroundTransparency=1,Size=UDim2.fromOffset(870,600),Position=UDim2.new(0.5,-435,0.52,-300)})
         tween(self.Overlay,TweenInfo.new(0.22,Enum.EasingStyle.Quad),{BackgroundTransparency=1})
+        tween(self.Sidebar,TweenInfo.new(0.2,Enum.EasingStyle.Quint,Enum.EasingDirection.In),{Position=UDim2.new(0,-220,0,0)})
         disableBlur()
-        task.delay(0.23,function()
+        task.delay(0.29,function()
             if self.Main and self.Main.Parent then self.Main.Visible=false; self.Main.Size=UDim2.fromOffset(900,620); self.Main.Position=UDim2.new(0.5,-450,0.5,-310) end
             if self.Overlay and self.Overlay.Parent then self.Overlay.Visible=false end
             if self.StarBg and self.StarBg.Parent then self.StarBg.Visible=false end
@@ -275,12 +282,16 @@ function Library:CreateTab(name)
         if not stroke.Enabled then
             tween(btn,TweenInfo.new(0.16,Enum.EasingStyle.Quint),{BackgroundColor3=Color3.fromRGB(24,24,32),TextColor3=Config.White})
             tween(indicator,TweenInfo.new(0.2,Enum.EasingStyle.Back,Enum.EasingDirection.Out),{Size=UDim2.fromOffset(3,14)})
+        else
+            tween(btn,TweenInfo.new(0.12,Enum.EasingStyle.Quint),{Size=UDim2.new(0.92,0,0,50)})
         end
     end)
     btn.MouseLeave:Connect(function()
         if not stroke.Enabled then
             tween(btn,TweenInfo.new(0.2,Enum.EasingStyle.Quint),{BackgroundColor3=Config.CardBg,TextColor3=Color3.fromRGB(155,155,168)})
             tween(indicator,TweenInfo.new(0.18),{Size=UDim2.fromOffset(3,0)})
+        else
+            tween(btn,TweenInfo.new(0.18,Enum.EasingStyle.Quint),{Size=UDim2.new(0.9,0,0,48)})
         end
     end)
     btn.MouseButton1Click:Connect(function()
@@ -294,6 +305,8 @@ function Library:CreateTab(name)
         stroke.Enabled=true
         tween(btn,TweenInfo.new(0.2,Enum.EasingStyle.Quint),{BackgroundColor3=Color3.fromRGB(24,24,32),TextColor3=Config.White})
         tween(indicator,TweenInfo.new(0.3,Enum.EasingStyle.Back,Enum.EasingDirection.Out),{Size=UDim2.fromOffset(3,24)})
+        btn.Size=UDim2.new(0.86,0,0,44)
+        tween(btn,TweenInfo.new(0.35,Enum.EasingStyle.Back,Enum.EasingDirection.Out),{Size=UDim2.new(0.9,0,0,48)})
         page.Position=UDim2.fromOffset(28,0); page.Visible=true
         tween(page,TweenInfo.new(0.28,Enum.EasingStyle.Quint,Enum.EasingDirection.Out),{Position=UDim2.fromOffset(0,0)})
         local cards={}
@@ -323,6 +336,12 @@ function Library:CreateSection(tab,name)
     pad.PaddingLeft=UDim.new(0,16); pad.PaddingRight=UDim.new(0,16)
     pad.PaddingTop=UDim.new(0,14); pad.PaddingBottom=UDim.new(0,14)
     local list=Instance.new("UIListLayout",card); list.Padding=UDim.new(0,10); list.SortOrder=Enum.SortOrder.LayoutOrder
+    card.MouseEnter:Connect(function()
+        tween(st,TweenInfo.new(0.22,Enum.EasingStyle.Quint),{Color=Config.Accent,Transparency=0.55,Thickness=1.4})
+    end)
+    card.MouseLeave:Connect(function()
+        tween(st,TweenInfo.new(0.28,Enum.EasingStyle.Quint),{Color=Config.Stroke,Transparency=0.25,Thickness=1})
+    end)
     local headRow=Instance.new("Frame",card); headRow.Size=UDim2.new(1,0,0,24); headRow.BackgroundTransparency=1; headRow.ZIndex=3
     local hdot=Instance.new("Frame",headRow); hdot.Size=UDim2.fromOffset(5,5); hdot.Position=UDim2.new(0,0,0.5,-2)
     hdot.BackgroundColor3=Config.Accent; hdot.BorderSizePixel=0; hdot.ZIndex=4
@@ -331,7 +350,16 @@ function Library:CreateSection(tab,name)
     head.Text=name:upper(); head.Font=Enum.Font.GothamBlack; head.TextSize=22
     head.TextColor3=Config.Accent; head.TextXAlignment=Enum.TextXAlignment.Left
     head.BackgroundTransparency=1; head.TextStrokeTransparency=1; head.ZIndex=3; head.TextTransparency=0.1
-    trackAccent(head); sec.Card=card; return sec
+    trackAccent(head)
+    card.MouseEnter:Connect(function()
+        hdot.Size=UDim2.fromOffset(7,7); hdot.Position=UDim2.new(0,-1,0.5,-3)
+        tween(hdot,TweenInfo.new(0.3,Enum.EasingStyle.Back,Enum.EasingDirection.Out),{Size=UDim2.fromOffset(5,5),Position=UDim2.new(0,0,0.5,-2)})
+        tween(head,TweenInfo.new(0.15),{TextTransparency=0})
+    end)
+    card.MouseLeave:Connect(function()
+        tween(head,TweenInfo.new(0.2),{TextTransparency=0.1})
+    end)
+    sec.Card=card; return sec
 end
 
 local function makeBindCell(parent,entry)
@@ -353,8 +381,18 @@ local function makeBindCell(parent,entry)
         modeBtn.Text=entry.mode=="Toggle" and "TGL" or "HLD"
         tween(modeBtn,TweenInfo.new(0.15),{BackgroundColor3=entry.mode=="Hold" and Config.Accent or Config.ToggleOff})
     end)
-    cell.MouseButton1Click:Connect(function() capturingBind=entry; cell.Text="..."; tween(cell,TweenInfo.new(0.12),{BackgroundColor3=Config.Accent}) end)
-    cell.MouseButton2Click:Connect(function() entry.key=nil; cell.Text="NONE"; tween(cell,TweenInfo.new(0.15),{BackgroundColor3=Config.ToggleOff}) end)
+    cell.MouseButton1Click:Connect(function()
+        capturingBind=entry; cell.Text="..."
+        tween(cell,TweenInfo.new(0.12),{BackgroundColor3=Config.Accent})
+        cell.Size=UDim2.fromOffset(62,24)
+        tween(cell,TweenInfo.new(0.2,Enum.EasingStyle.Back,Enum.EasingDirection.Out),{Size=UDim2.fromOffset(58,22)})
+    end)
+    cell.MouseButton2Click:Connect(function()
+        entry.key=nil; cell.Text="NONE"
+        tween(cell,TweenInfo.new(0.15),{BackgroundColor3=Config.ToggleOff})
+        cell.Size=UDim2.fromOffset(54,20)
+        tween(cell,TweenInfo.new(0.2,Enum.EasingStyle.Back,Enum.EasingDirection.Out),{Size=UDim2.fromOffset(58,22)})
+    end)
 end
 
 function Section:AddToggle(text,default,callback)
@@ -364,16 +402,11 @@ function Section:AddToggle(text,default,callback)
     row.BackgroundTransparency=1; row.BorderSizePixel=0; row.ZIndex=3; row.Active=false
     Instance.new("UICorner",row).CornerRadius=UDim.new(0,8)
     local lbl=Instance.new("TextLabel",row)
-    -- оставляем место под bind-кнопки (106px справа)
     lbl.Size=UDim2.new(1,-114,1,0); lbl.Text=text; lbl.Font=Enum.Font.Gotham; lbl.TextSize=17
     lbl.TextColor3=Config.White; lbl.TextXAlignment=Enum.TextXAlignment.Left
     lbl.BackgroundTransparency=1; lbl.TextStrokeTransparency=1; lbl.ZIndex=3
     local pill=Instance.new("TextButton",row)
-    pill.Size=UDim2.fromOffset(50,26); pill.Position=UDim2.new(0,0,0.5,-13)
-    -- pill сдвигаем правее label, но левее bind-кнопок — не нужен отдельный pill в этой строке
-    -- вместо этого pill прячем за label: используем абсолютную позицию
-    -- pill располагаем после label с небольшим отступом
-    pill.Position=UDim2.new(1,-168,0.5,-13)
+    pill.Size=UDim2.fromOffset(50,26); pill.Position=UDim2.new(1,-168,0.5,-13)
     pill.BackgroundColor3=default and Config.Accent or Config.ToggleOff
     pill.Text=""; pill.AutoButtonColor=false; pill.ZIndex=4
     Instance.new("UICorner",pill).CornerRadius=UDim.new(0,6)
@@ -389,8 +422,19 @@ function Section:AddToggle(text,default,callback)
         tween(row,TweenInfo.new(0.2,Enum.EasingStyle.Quint),{BackgroundTransparency=1})
         tween(lbl,TweenInfo.new(0.2),{TextColor3=Config.White})
     end)
+    row.InputBegan:Connect(function(i)
+        if i.UserInputType~=Enum.UserInputType.MouseButton1 then return end
+        local ripple=Instance.new("Frame",row)
+        ripple.AnchorPoint=Vector2.new(0.5,0.5); ripple.BackgroundColor3=Config.Accent
+        ripple.BackgroundTransparency=0.6; ripple.BorderSizePixel=0; ripple.ZIndex=6
+        ripple.Size=UDim2.fromOffset(0,0)
+        local mp=getMousePos(); local rp=row.AbsolutePosition
+        ripple.Position=UDim2.fromOffset(mp.X-rp.X,mp.Y-rp.Y)
+        Instance.new("UICorner",ripple).CornerRadius=UDim.new(1,0)
+        tween(ripple,TweenInfo.new(0.45,Enum.EasingStyle.Quint,Enum.EasingDirection.Out),{Size=UDim2.fromOffset(200,200),BackgroundTransparency=1})
+        task.delay(0.46,function() pcall(function() ripple:Destroy() end) end)
+    end)
     local state=default
-    -- регистрируем pill для recolor при смене темы
     local pillAccentRef={_pill=pill,_state=function() return state end}
     accentElements[#accentElements+1]=pillAccentRef
     local function setState(v)
@@ -399,6 +443,8 @@ function Section:AddToggle(text,default,callback)
         tween(dot,TweenInfo.new(0.22,Enum.EasingStyle.Back,Enum.EasingDirection.Out),{Position=state and UDim2.new(1,-22,0.5,-9) or UDim2.new(0,4,0.5,-9)})
         dot.Size=UDim2.fromOffset(22,22)
         tween(dot,TweenInfo.new(0.18,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{Size=UDim2.fromOffset(18,18)})
+        pill.Size=UDim2.fromOffset(54,28)
+        tween(pill,TweenInfo.new(0.25,Enum.EasingStyle.Back,Enum.EasingDirection.Out),{Size=UDim2.fromOffset(50,26)})
         callback(state)
     end
     pill.MouseButton1Click:Connect(function() setState(not state) end)
@@ -434,14 +480,16 @@ function Section:AddSlider(text,min,max,default,callback,float)
     bar.MouseEnter:Connect(function()
         tween(bar,TweenInfo.new(0.18,Enum.EasingStyle.Quint),{Size=UDim2.new(1,0,0,8),Position=UDim2.new(0,0,0,33)})
         tween(knob,TweenInfo.new(0.2,Enum.EasingStyle.Back,Enum.EasingDirection.Out),{Size=UDim2.fromOffset(14,14)})
+        tween(sTitle,TweenInfo.new(0.15),{TextColor3=Config.Accent})
     end)
     bar.MouseLeave:Connect(function()
         tween(bar,TweenInfo.new(0.18,Enum.EasingStyle.Quint),{Size=UDim2.new(1,0,0,6),Position=UDim2.new(0,0,0,34)})
         tween(knob,TweenInfo.new(0.15),{Size=UDim2.fromOffset(0,0)})
+        tween(sTitle,TweenInfo.new(0.2),{TextColor3=Config.White})
     end)
     local dragging=false
     local function update()
-        local r=math.clamp((UserInputService:GetMouseLocation().X-bar.AbsolutePosition.X)/bar.AbsoluteSize.X,0,1)
+        local r=math.clamp((getMousePos().X-bar.AbsolutePosition.X)/bar.AbsoluteSize.X,0,1)
         local v=min+(max-min)*r; if not float then v=math.round(v) end
         fill.Size=UDim2.new(r,0,1,0); knob.Position=UDim2.new(r,0,0.5,0)
         valLbl.Text=float and string.format("%.2f",v) or tostring(v); callback(v)
@@ -461,14 +509,36 @@ end
 
 function Section:AddButton(text,callback)
     local btn=Instance.new("TextButton",self.Card)
-    local btn=Instance.new("TextButton",self.Card)
     btn.Size=UDim2.new(1,0,0,36); btn.BackgroundColor3=Config.ToggleOff
     btn.Text=text; btn.Font=Enum.Font.GothamBold; btn.TextSize=26
     btn.TextColor3=Config.White; btn.AutoButtonColor=false; btn.TextStrokeTransparency=1; btn.ZIndex=3
     Instance.new("UICorner",btn).CornerRadius=UDim.new(0,9)
-    btn.MouseEnter:Connect(function() tween(btn,TweenInfo.new(0.15),{BackgroundColor3=Config.Accent}) end)
-    btn.MouseLeave:Connect(function() tween(btn,TweenInfo.new(0.18),{BackgroundColor3=Config.ToggleOff}) end)
-    btn.MouseButton1Click:Connect(function() pcall(callback) end)
+    btn.MouseEnter:Connect(function()
+        tween(btn,TweenInfo.new(0.15),{BackgroundColor3=Config.Accent})
+        tween(btn,TweenInfo.new(0.12,Enum.EasingStyle.Back,Enum.EasingDirection.Out),{Size=UDim2.new(1,4,0,38)})
+    end)
+    btn.MouseLeave:Connect(function()
+        tween(btn,TweenInfo.new(0.18),{BackgroundColor3=Config.ToggleOff})
+        tween(btn,TweenInfo.new(0.18,Enum.EasingStyle.Quint),{Size=UDim2.new(1,0,0,36)})
+    end)
+    btn.MouseButton1Down:Connect(function()
+        tween(btn,TweenInfo.new(0.08,Enum.EasingStyle.Quad,Enum.EasingDirection.In),{Size=UDim2.new(0.97,0,0,34)})
+    end)
+    btn.MouseButton1Up:Connect(function()
+        tween(btn,TweenInfo.new(0.22,Enum.EasingStyle.Back,Enum.EasingDirection.Out),{Size=UDim2.new(1,4,0,38)})
+    end)
+    btn.MouseButton1Click:Connect(function()
+        local ripple=Instance.new("Frame",btn)
+        ripple.AnchorPoint=Vector2.new(0.5,0.5); ripple.BackgroundColor3=Color3.new(1,1,1)
+        ripple.BackgroundTransparency=0.7; ripple.BorderSizePixel=0; ripple.ZIndex=5
+        ripple.Size=UDim2.fromOffset(0,0)
+        local mp=getMousePos(); local bp=btn.AbsolutePosition
+        ripple.Position=UDim2.fromOffset(mp.X-bp.X,mp.Y-bp.Y)
+        Instance.new("UICorner",ripple).CornerRadius=UDim.new(1,0)
+        tween(ripple,TweenInfo.new(0.5,Enum.EasingStyle.Quint,Enum.EasingDirection.Out),{Size=UDim2.fromOffset(300,300),BackgroundTransparency=1})
+        task.delay(0.51,function() pcall(function() ripple:Destroy() end) end)
+        pcall(callback)
+    end)
     return btn
 end
 
@@ -484,8 +554,7 @@ function Section:AddColorPicker(text,default,callback)
     swatch.Size=UDim2.fromOffset(32,22); swatch.Position=UDim2.new(1,-36,0.5,-11)
     swatch.BackgroundColor3=currentColor; swatch.Text=""; swatch.AutoButtonColor=false; swatch.ZIndex=4
     Instance.new("UICorner",swatch).CornerRadius=UDim.new(0,6)
-    local swStroke=Instance.new("UIStroke",swatch); swStroke.Color=Color3.fromRGB(80,80,100); swStroke.Thickness=1
-    -- HSV picker popup
+    Instance.new("UIStroke",swatch).Color=Color3.fromRGB(80,80,100)
     local pickerOpen=false
     local popup=Instance.new("Frame",self.Card)
     popup.Size=UDim2.new(1,0,0,0); popup.BackgroundColor3=Color3.fromRGB(18,18,26)
@@ -495,29 +564,17 @@ function Section:AddColorPicker(text,default,callback)
     local popPad=Instance.new("UIPadding",popup)
     popPad.PaddingLeft=UDim.new(0,10); popPad.PaddingRight=UDim.new(0,10)
     popPad.PaddingTop=UDim.new(0,10); popPad.PaddingBottom=UDim.new(0,10)
-    -- Hue bar
     local hueBar=Instance.new("Frame",popup); hueBar.Size=UDim2.new(1,0,0,14); hueBar.BackgroundColor3=Color3.new(1,1,1)
     hueBar.BorderSizePixel=0; hueBar.ZIndex=6; hueBar.Active=true
     Instance.new("UICorner",hueBar).CornerRadius=UDim.new(0,4)
     local hueGrad=Instance.new("UIGradient",hueBar)
-    hueGrad.Color=ColorSequence.new({
-        ColorSequenceKeypoint.new(0,Color3.fromRGB(255,0,0)),
-        ColorSequenceKeypoint.new(0.167,Color3.fromRGB(255,255,0)),
-        ColorSequenceKeypoint.new(0.333,Color3.fromRGB(0,255,0)),
-        ColorSequenceKeypoint.new(0.5,Color3.fromRGB(0,255,255)),
-        ColorSequenceKeypoint.new(0.667,Color3.fromRGB(0,0,255)),
-        ColorSequenceKeypoint.new(0.833,Color3.fromRGB(255,0,255)),
-        ColorSequenceKeypoint.new(1,Color3.fromRGB(255,0,0)),
-    })
-    -- hue knob
+    hueGrad.Color=ColorSequence.new({ColorSequenceKeypoint.new(0,Color3.fromRGB(255,0,0)),ColorSequenceKeypoint.new(0.167,Color3.fromRGB(255,255,0)),ColorSequenceKeypoint.new(0.333,Color3.fromRGB(0,255,0)),ColorSequenceKeypoint.new(0.5,Color3.fromRGB(0,255,255)),ColorSequenceKeypoint.new(0.667,Color3.fromRGB(0,0,255)),ColorSequenceKeypoint.new(0.833,Color3.fromRGB(255,0,255)),ColorSequenceKeypoint.new(1,Color3.fromRGB(255,0,0))})
     local hueKnob=Instance.new("Frame",hueBar)
     hueKnob.Size=UDim2.fromOffset(6,18); hueKnob.AnchorPoint=Vector2.new(0.5,0.5)
     hueKnob.Position=UDim2.new(0,0,0.5,0); hueKnob.BackgroundColor3=Color3.new(1,1,1)
     hueKnob.BorderSizePixel=0; hueKnob.ZIndex=9
     Instance.new("UICorner",hueKnob).CornerRadius=UDim.new(0,3)
-    local hueKnobStroke=Instance.new("UIStroke",hueKnob)
-    hueKnobStroke.Color=Color3.new(0,0,0); hueKnobStroke.Thickness=1.5
-    -- SV field
+    Instance.new("UIStroke",hueKnob).Color=Color3.new(0,0,0)
     local svField=Instance.new("Frame",popup); svField.Size=UDim2.new(1,0,0,80)
     svField.Position=UDim2.new(0,0,0,22); svField.BackgroundColor3=Color3.new(1,0,0)
     svField.BorderSizePixel=0; svField.ZIndex=6; svField.Active=true
@@ -530,13 +587,11 @@ function Section:AddColorPicker(text,default,callback)
     svBlack.Color=ColorSequence.new(Color3.new(0,0,0),Color3.new(0,0,0))
     svBlack.Transparency=NumberSequence.new({NumberSequenceKeypoint.new(0,1),NumberSequenceKeypoint.new(1,0)})
     svBlack.Rotation=90
-    -- cursor dot
     local svDot=Instance.new("Frame",svField); svDot.Size=UDim2.fromOffset(10,10)
     svDot.AnchorPoint=Vector2.new(0.5,0.5); svDot.BackgroundColor3=Color3.new(1,1,1)
     svDot.BorderSizePixel=0; svDot.ZIndex=8
     Instance.new("UICorner",svDot).CornerRadius=UDim.new(1,0)
     Instance.new("UIStroke",svDot).Color=Color3.new(0,0,0)
-    -- hex input
     local hexBox=Instance.new("TextBox",popup); hexBox.Size=UDim2.new(1,0,0,22)
     hexBox.Position=UDim2.new(0,0,0,110); hexBox.BackgroundColor3=Color3.fromRGB(28,28,38)
     hexBox.Text="#FF3232"; hexBox.Font=Enum.Font.GothamBold; hexBox.TextSize=14
@@ -555,8 +610,7 @@ function Section:AddColorPicker(text,default,callback)
         svDot.Position=UDim2.new(s,0,1-v,0)
         hueKnob.Position=UDim2.new(h,0,0.5,0)
         hueKnob.BackgroundColor3=Color3.fromHSV(h,1,1)
-        hexBox.Text=hexFromColor(c)
-        pcall(callback,c)
+        hexBox.Text=hexFromColor(c); pcall(callback,c)
     end
     applyColor(currentColor)
     local draggingHue,draggingSV=false,false
@@ -567,7 +621,7 @@ function Section:AddColorPicker(text,default,callback)
     end)
     track(RunService.RenderStepped:Connect(function()
         if not popup.Visible then return end
-        local mp=UserInputService:GetMouseLocation()
+        local mp=getMousePos()
         if draggingHue then
             local r=math.clamp((mp.X-hueBar.AbsolutePosition.X)/hueBar.AbsoluteSize.X,0,1)
             h=r; applyColor(Color3.fromHSV(h,s,v))
@@ -582,16 +636,16 @@ function Section:AddColorPicker(text,default,callback)
         local hex=hexBox.Text:gsub("#","")
         if #hex==6 then
             local r=tonumber(hex:sub(1,2),16); local g=tonumber(hex:sub(3,4),16); local b=tonumber(hex:sub(5,6),16)
-            if r and g and b then
-                local c=Color3.fromRGB(r,g,b); h,s,v=Color3.toHSV(c); applyColor(c)
-            end
+            if r and g and b then local c=Color3.fromRGB(r,g,b); h,s,v=Color3.toHSV(c); applyColor(c) end
         end
     end)
     swatch.MouseButton1Click:Connect(function()
         pickerOpen=not pickerOpen
         if pickerOpen then svField.BackgroundColor3=Color3.fromHSV(h,1,1) end
         popup.Visible=pickerOpen
-        tween(popup,TweenInfo.new(0.2,Enum.EasingStyle.Quint),{Size=pickerOpen and UDim2.new(1,0,0,142) or UDim2.new(1,0,0,0)})
+        swatch.Size=UDim2.fromOffset(36,26)
+        tween(swatch,TweenInfo.new(0.25,Enum.EasingStyle.Back,Enum.EasingDirection.Out),{Size=UDim2.fromOffset(32,22)})
+        tween(popup,TweenInfo.new(0.25,Enum.EasingStyle.Back,Enum.EasingDirection.Out),{Size=pickerOpen and UDim2.new(1,0,0,142) or UDim2.new(1,0,0,0)})
     end)
     return {GetColor=function() return currentColor end, SetColor=function(c) h,s,v=Color3.toHSV(c); applyColor(c) end}
 end
@@ -646,7 +700,7 @@ local function createEntry(player)
     local hpTextF,hpTextL=makeEspLabel(12); hpTextL.TextStrokeTransparency=0.2; e.hpTextF=hpTextF; e.hpTextL=hpTextL; hpTextF.Parent=EspGui
     local nameF,nameL=makeEspLabel(14); nameL.TextXAlignment=Enum.TextXAlignment.Center; e.nameF=nameF; e.nameL=nameL; nameF.Parent=EspGui
     local distF,distL=makeEspLabel(13); distL.TextXAlignment=Enum.TextXAlignment.Center; distL.TextColor3=Color3.fromRGB(200,200,200); e.distF=distF; e.distL=distL; distF.Parent=EspGui
-    -- Tracer: используем Frame с AnchorPoint=(0,0.5) для правильного рендера линии
+    -- Tracer:  Frame  AnchorPoint=(0,0.5)    
     local tracer=Instance.new("Frame",EspGui)
     tracer.AnchorPoint=Vector2.new(0,0.5)
     tracer.BackgroundColor3=Color3.fromRGB(255,255,255)
@@ -680,7 +734,7 @@ track(RunService.RenderStepped:Connect(function()
         local dist=(root.Position-camCF.Position).Magnitude
         if dist>Settings.MaxDistance then hideEntry(e); continue end
 
-        -- bbox через 4 точки вокруг root
+        -- bbox  4   root
         local halfW=1.2; local halfH=3.2
         local minX,minY,maxX,maxY=math.huge,math.huge,-math.huge,-math.huge
         local anyOnScreen=false
@@ -697,7 +751,7 @@ track(RunService.RenderStepped:Connect(function()
         end
         if not anyOnScreen or minX==math.huge then hideEntry(e); e._fx=nil; continue end
         local rawW=maxX-minX; local h=maxY-minY
-        -- минимальная ширина пропорциональна высоте (не даёт боксу стать совсем тонким сбоку)
+        --     (      )
         local w=math.max(rawW, h*0.18)
         if w>vp.X*0.85 or h>vp.Y*0.85 then hideEntry(e); e._fx=nil; continue end
 
@@ -722,7 +776,13 @@ track(RunService.RenderStepped:Connect(function()
         end
         e.distF.Visible=Settings.Distance
         if Settings.Distance then e.distF.Size=UDim2.fromOffset(70,17); e.distF.Position=UDim2.fromOffset(x+w/2-35,y+h+4); e.distL.Text=string.format("%.0fm",distV) end
-        -- трейсер только если ноги игрока реально на экране
+        e.nameF.Visible=Settings.Names
+        if Settings.Names then
+            local name=player.DisplayName
+            e.nameF.Size=UDim2.fromOffset(#name*8+10,18); e.nameF.Position=UDim2.fromOffset(x+w/2-(#name*8+10)/2,y-20)
+            e.nameL.Text=name
+        end
+        -- (comment)
         local tracerOk=e._fx>0 and e._fx<vp.X and e._fy>0 and e._fy<vp.Y
         e.tracer.Visible=Settings.Tracers and tracerOk
         if Settings.Tracers and tracerOk then
@@ -767,7 +827,7 @@ local function restoreAll()
     table.clear(originalTransparencies)
 end
 
--- Corner-box GUI для хитбоксов
+-- Corner-box GUI  
 local HitboxGui=Instance.new("ScreenGui")
 HitboxGui.Name=rname("hbx"); HitboxGui.ResetOnSpawn=false
 HitboxGui.IgnoreGuiInset=true; HitboxGui.DisplayOrder=6
@@ -845,13 +905,13 @@ track(RunService.Heartbeat:Connect(function()
         end
         local hrp=char:FindFirstChild("HumanoidRootPart")
         if not hrp then continue end
-        -- физическое изменение (только клиент)
+        --   ( )
         cacheOriginal(hrp)
         pcall(function()
             hrp.Size=Vector3.one*Settings.HitboxSize
             hrp.Transparency=Settings.HitboxTransparency
         end)
-        -- corner-box на экране
+        -- corner-box  
         if not hitboxBoxes[player] then
             local holder=Instance.new("Frame",HitboxGui)
             holder.BackgroundTransparency=1; holder.Size=UDim2.fromScale(1,1); holder.ZIndex=6
@@ -898,64 +958,115 @@ track(RunService.Heartbeat:Connect(function()
 end))
 
 
--- МЕНЮ
+-- (comment)
 local Menu=Library.new("elysium")
-local tCombat=Menu:CreateTab("Combat"); local tVisuals=Menu:CreateTab("Visuals"); local tSettings=Menu:CreateTab("Settings"); local tWhitelist=Menu:CreateTab("Whitelist")
+local tCombat=Menu:CreateTab("Combat"); local tVisuals=Menu:CreateTab("Visuals"); local tSettings=Menu:CreateTab("Settings"); local tWhitelist=Menu:CreateTab("PlayerList")
 
--- WHITELIST UI
-local wlSec=Menu:CreateSection(tWhitelist,"Whitelist")
+-- PLAYERLIST UI
+local wlSec=Menu:CreateSection(tWhitelist,"Player List")
 local wlRows={}
 
-local function rebuildWhitelistUI()
-    -- удаляем старые строки
+-- Spectate
+local spectateTarget=nil
+local spectateConn=nil
+local spectateGui=Instance.new("ScreenGui")
+spectateGui.Name=rname("spec"); spectateGui.ResetOnSpawn=false
+spectateGui.IgnoreGuiInset=true; spectateGui.DisplayOrder=15
+pcall(function() spectateGui.Parent=SafeGui end)
+local specLabel=Instance.new("TextLabel",spectateGui)
+specLabel.Size=UDim2.fromOffset(300,28); specLabel.Position=UDim2.new(0.5,-150,0,12)
+specLabel.BackgroundColor3=Color3.fromRGB(10,10,14); specLabel.BackgroundTransparency=0.3
+specLabel.Text=""; specLabel.Font=Enum.Font.GothamBold; specLabel.TextSize=15
+specLabel.TextColor3=Config.Accent; specLabel.BorderSizePixel=0; specLabel.Visible=false; specLabel.ZIndex=15
+Instance.new("UICorner",specLabel).CornerRadius=UDim.new(0,8)
+local specStroke=Instance.new("UIStroke",specLabel); specStroke.Color=Config.Accent; specStroke.Thickness=1; specStroke.Transparency=0.5
+
+local function stopSpectate()
+    if spectateConn then spectateConn:Disconnect(); spectateConn=nil end
+    spectateTarget=nil
+    specLabel.Visible=false
+    -- (comment)
+    pcall(function()
+        Camera.CameraSubject=LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        Camera.CameraType=Enum.CameraType.Custom
+    end)
+    rebuildPlayerListUI()
+end
+
+local function startSpectate(player)
+    if spectateTarget then stopSpectate() end
+    spectateTarget=player
+    specLabel.Visible=true
+    specLabel.Text="[*]  Spectating: "..player.DisplayName.." (@"..player.Name..")"
+    -- (comment)
+    spectateConn=RunService.RenderStepped:Connect(function()
+        if not spectateTarget or not spectateTarget.Parent then stopSpectate(); return end
+        local char=spectateTarget.Character
+        local hum=char and char:FindFirstChildOfClass("Humanoid")
+        local hrp=char and char:FindFirstChild("HumanoidRootPart")
+        if not char or not hum or not hrp then return end
+        pcall(function()
+            Camera.CameraSubject=hum
+            Camera.CameraType=Enum.CameraType.Custom
+        end)
+    end)
+    rebuildPlayerListUI()
+end
+
+function rebuildPlayerListUI()
     for _,r in wlRows do if r and r.Parent then r:Destroy() end end
     table.clear(wlRows)
     for _,ply in Players:GetPlayers() do
         if ply==LocalPlayer then continue end
         local isWL=_G.Whitelist[ply.UserId]==true
+        local isSpec=spectateTarget==ply
         local row=Instance.new("Frame",wlSec.Card)
         row.Size=UDim2.new(1,0,0,36); row.BackgroundTransparency=1; row.BorderSizePixel=0; row.ZIndex=3
         Instance.new("UICorner",row).CornerRadius=UDim.new(0,8)
-        -- цветной индикатор
+        -- dot
         local dot=Instance.new("Frame",row)
         dot.Size=UDim2.fromOffset(8,8); dot.Position=UDim2.new(0,0,0.5,-4)
         dot.BackgroundColor3=isWL and Color3.fromRGB(80,220,100) or Color3.fromRGB(220,80,80)
         dot.BorderSizePixel=0; dot.ZIndex=4
         Instance.new("UICorner",dot).CornerRadius=UDim.new(1,0)
-        -- имя игрока
+        -- (comment)
         local lbl=Instance.new("TextLabel",row)
-        lbl.Size=UDim2.new(1,-120,1,0); lbl.Position=UDim2.fromOffset(16,0)
+        lbl.Size=UDim2.new(1,-196,1,0); lbl.Position=UDim2.fromOffset(16,0)
         lbl.Text=ply.DisplayName.." (@"..ply.Name..")"
         lbl.Font=Enum.Font.Gotham; lbl.TextSize=15
         lbl.TextColor3=isWL and Color3.fromRGB(80,220,100) or Config.White
         lbl.BackgroundTransparency=1; lbl.TextXAlignment=Enum.TextXAlignment.Left
         lbl.TextTruncate=Enum.TextTruncate.AtEnd; lbl.ZIndex=4
-        -- кнопка
-        local btn=Instance.new("TextButton",row)
-        btn.Size=UDim2.fromOffset(90,26); btn.Position=UDim2.new(1,-90,0.5,-13)
-        btn.Text=isWL and "Remove" or "Add"
-        btn.Font=Enum.Font.GothamBold; btn.TextSize=14
-        btn.BackgroundColor3=isWL and Color3.fromRGB(60,160,80) or Config.Accent
-        btn.TextColor3=Config.White; btn.AutoButtonColor=false; btn.ZIndex=4
-        Instance.new("UICorner",btn).CornerRadius=UDim.new(0,7)
+        --  Spectate
+        local specBtn=Instance.new("TextButton",row)
+        specBtn.Size=UDim2.fromOffset(80,26); specBtn.Position=UDim2.new(1,-186,0.5,-13)
+        specBtn.Text=isSpec and "Stop" or "Spectate"
+        specBtn.Font=Enum.Font.GothamBold; specBtn.TextSize=13
+        specBtn.BackgroundColor3=isSpec and Color3.fromRGB(200,80,80) or Color3.fromRGB(60,120,200)
+        specBtn.TextColor3=Config.White; specBtn.AutoButtonColor=false; specBtn.ZIndex=4
+        Instance.new("UICorner",specBtn).CornerRadius=UDim.new(0,7)
+        specBtn.MouseButton1Click:Connect(function()
+            if isSpec then stopSpectate() else startSpectate(ply) end
+        end)
+        specBtn.MouseEnter:Connect(function() tween(specBtn,TweenInfo.new(0.12),{BackgroundTransparency=0.3}) end)
+        specBtn.MouseLeave:Connect(function() tween(specBtn,TweenInfo.new(0.15),{BackgroundTransparency=0}) end)
+        --  Whitelist
+        local wlBtn=Instance.new("TextButton",row)
+        wlBtn.Size=UDim2.fromOffset(90,26); wlBtn.Position=UDim2.new(1,-90,0.5,-13)
+        wlBtn.Text=isWL and "Remove" or "Add WL"
+        wlBtn.Font=Enum.Font.GothamBold; wlBtn.TextSize=13
+        wlBtn.BackgroundColor3=isWL and Color3.fromRGB(60,160,80) or Config.Accent
+        wlBtn.TextColor3=Config.White; wlBtn.AutoButtonColor=false; wlBtn.ZIndex=4
+        Instance.new("UICorner",wlBtn).CornerRadius=UDim.new(0,7)
         local uid=ply.UserId
-        btn.MouseButton1Click:Connect(function()
-            if _G.Whitelist[uid] then
-                _G.Whitelist[uid]=nil
-            else
-                _G.Whitelist[uid]=true
-            end
-            rebuildWhitelistUI()
+        wlBtn.MouseButton1Click:Connect(function()
+            if _G.Whitelist[uid] then _G.Whitelist[uid]=nil else _G.Whitelist[uid]=true end
+            rebuildPlayerListUI()
         end)
-        btn.MouseEnter:Connect(function()
-            tween(btn,TweenInfo.new(0.12),{BackgroundColor3=Color3.fromRGB(255,255,255):Lerp(btn.BackgroundColor3,0.7)})
-        end)
-        btn.MouseLeave:Connect(function()
-            tween(btn,TweenInfo.new(0.15),{BackgroundColor3=_G.Whitelist[uid] and Color3.fromRGB(60,160,80) or Config.Accent})
-        end)
+        wlBtn.MouseEnter:Connect(function() tween(wlBtn,TweenInfo.new(0.12),{BackgroundTransparency=0.3}) end)
+        wlBtn.MouseLeave:Connect(function() tween(wlBtn,TweenInfo.new(0.15),{BackgroundTransparency=0}) end)
         wlRows[#wlRows+1]=row
     end
-    -- если никого нет
     if #wlRows==0 then
         local empty=Instance.new("TextLabel",wlSec.Card)
         empty.Size=UDim2.new(1,0,0,28); empty.BackgroundTransparency=1
@@ -965,15 +1076,15 @@ local function rebuildWhitelistUI()
     end
 end
 
--- кнопка обновить список
-wlSec:AddButton("Refresh Player List",function()
-    rebuildWhitelistUI()
-end)
-rebuildWhitelistUI()
+wlSec:AddButton("Refresh Player List",function() rebuildPlayerListUI() end)
+rebuildPlayerListUI()
 
--- авто-обновление при входе/выходе игроков
-Players.PlayerAdded:Connect(function() task.wait(1); rebuildWhitelistUI() end)
-Players.PlayerRemoving:Connect(function() task.wait(0.1); rebuildWhitelistUI() end)
+Players.PlayerAdded:Connect(function() task.wait(1); rebuildPlayerListUI() end)
+Players.PlayerRemoving:Connect(function()
+    task.wait(0.1)
+    if spectateTarget and not spectateTarget.Parent then stopSpectate() end
+    rebuildPlayerListUI()
+end)
 
 local trigSec=Menu:CreateSection(tCombat,"Trigger Bot")
 local trigEntry=trigSec:AddToggle("Trigger",false,function(v) Settings.TriggerBot=v end); trigEntry.hudOnlyWhenActive=true
@@ -988,6 +1099,54 @@ hbSec:AddToggle("Enable Hitboxes",false,function(v) Settings.HitboxEnabled=v end
 hbSec:AddSlider("Hitbox Size",1,30,8,function(v) Settings.HitboxSize=v end)
 hbSec:AddSlider("Box Transparency",0,100,50,function(v) Settings.HitboxTransparency=v/100 end)
 
+
+-- FAKELAG
+local flSec=Menu:CreateSection(tCombat,"Fake Lag")
+Settings.FakeLag=false
+
+local fakeLagThread=nil
+local fakeLagWaitTime=0.05   -- пауза между циклами (как часто лагаешь)
+local fakeLagDelayTime=0.4   -- сколько секунд держать Anchored (лаг для других)
+
+local function stopFakeLag()
+    if fakeLagThread then
+        task.cancel(fakeLagThread)
+        fakeLagThread=nil
+    end
+    -- Убеждаемся что Anchored снят
+    pcall(function()
+        local hrp=LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if hrp then hrp.Anchored=false end
+    end)
+end
+
+local function startFakeLag()
+    stopFakeLag()
+    fakeLagThread=task.spawn(function()
+        while Settings.FakeLag and not Settings.Unloaded do
+            task.wait(fakeLagWaitTime)
+            if not Settings.FakeLag then break end
+            local char=LocalPlayer.Character
+            local hrp=char and char:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                hrp.Anchored=true
+                task.wait(fakeLagDelayTime)
+                hrp.Anchored=false
+            end
+        end
+    end)
+end
+
+flSec:AddToggle("Enable Fake Lag",false,function(v)
+    Settings.FakeLag=v
+    if v then startFakeLag() else stopFakeLag() end
+end)
+flSec:AddSlider("Lag Duration (ms)",100,3000,400,function(v)
+    fakeLagDelayTime=v/1000
+end)
+flSec:AddSlider("Lag Interval (ms)",50,2000,50,function(v)
+    fakeLagWaitTime=v/1000
+end)
 
 local espSec=Menu:CreateSection(tVisuals,"ESP Rendering")
 espSec:AddToggle("Master ESP Switch",false,function(v) Settings.ESP_Enabled=v end)
@@ -1013,7 +1172,7 @@ hudPad.PaddingLeft=UDim.new(0,12); hudPad.PaddingRight=UDim.new(0,12)
 hudPad.PaddingTop=UDim.new(0,10); hudPad.PaddingBottom=UDim.new(0,10)
 local hudList=Instance.new("UIListLayout",hudFrame); hudList.Padding=UDim.new(0,4); hudList.SortOrder=Enum.SortOrder.LayoutOrder
 local hudTitle=Instance.new("TextLabel",hudFrame)
-hudTitle.LayoutOrder=0; hudTitle.Size=UDim2.new(1,0,0,22); hudTitle.Text="⬡  KEYBINDS"
+hudTitle.LayoutOrder=0; hudTitle.Size=UDim2.new(1,0,0,22); hudTitle.Text="[*]  KEYBINDS"
 hudTitle.Font=Enum.Font.GothamBlack; hudTitle.TextSize=22
 hudTitle.TextColor3=Config.Accent; hudTitle.BackgroundTransparency=1
 hudTitle.TextXAlignment=Enum.TextXAlignment.Left; hudTitle.ZIndex=10; trackAccent(hudTitle)
@@ -1037,11 +1196,11 @@ local function rebuildHud()
         if not entry.key then continue end
         if entry.hudOnlyWhenActive and not entry.state then continue end
         hasAny=true
-        -- Двухстрочный layout: имя сверху, кнопка снизу — не перекрываются
+        --  layout:  ,     
         local row=Instance.new("Frame",hudFrame)
         row.LayoutOrder=hudRowOrder; hudRowOrder=hudRowOrder+1
         row.Size=UDim2.new(1,0,0,36); row.BackgroundTransparency=1; row.ZIndex=10
-        -- Имя функции — верхняя строка, полная ширина
+        --     ,  
         local nameLbl=Instance.new("TextLabel",row)
         nameLbl.Size=UDim2.new(1,0,0,18)
         nameLbl.Position=UDim2.fromOffset(0,0)
@@ -1051,14 +1210,13 @@ local function rebuildHud()
         nameLbl.TextXAlignment=Enum.TextXAlignment.Left
         nameLbl.TextTruncate=Enum.TextTruncate.AtEnd
         nameLbl.ZIndex=10
-        -- Кнопка — нижняя строка, выровнена вправо
+        --    ,  
         local keyStr=tostring(entry.key):gsub("Enum%.KeyCode%.","")
         local keyLbl=Instance.new("TextLabel",row)
         keyLbl.Size=UDim2.new(1,0,0,16)
         keyLbl.Position=UDim2.fromOffset(0,19)
         keyLbl.Text="["..keyStr.."]"
         keyLbl.Font=Enum.Font.GothamBold; keyLbl.TextSize=18
-        keyLbl.TextColor3=Config.Accent; keyLbl.BackgroundTransparency=1
         keyLbl.TextXAlignment=Enum.TextXAlignment.Left
         keyLbl.ZIndex=10
         hudRowMap[entry]={frame=row,keyLbl=keyLbl}
@@ -1098,6 +1256,14 @@ local themeIdx=1
 local themeDropOpen=false
 local themeDropFrame=nil
 
+local function closeThemeDrop()
+    if themeDropFrame and themeDropFrame.Parent then
+        tween(themeDropFrame,TweenInfo.new(0.2,Enum.EasingStyle.Quint,Enum.EasingDirection.In),{Size=UDim2.fromOffset(200,0),BackgroundTransparency=1})
+        task.delay(0.21,function() if themeDropFrame and themeDropFrame.Parent then themeDropFrame:Destroy(); themeDropFrame=nil end end)
+        themeDropOpen=false
+    end
+end
+
 local themeAccentDots={
     Orange=Color3.fromRGB(255,157,19),  Purple=Color3.fromRGB(170,100,255),
     Cyan=Color3.fromRGB(60,210,230),    Red=Color3.fromRGB(235,75,75),
@@ -1115,11 +1281,9 @@ local function applyThemeAndRecolor(n)
     end
 end
 
-local themeBtn; themeBtn=settSec:AddButton("Theme  v  Orange",function()
+local themeBtn; themeBtn=settSec:AddButton("Theme  Orange",function()
     if themeDropFrame and themeDropFrame.Parent then
-        tween(themeDropFrame,TweenInfo.new(0.2,Enum.EasingStyle.Quint,Enum.EasingDirection.In),{Size=UDim2.fromOffset(200,0),BackgroundTransparency=1})
-        task.delay(0.21,function() if themeDropFrame and themeDropFrame.Parent then themeDropFrame:Destroy(); themeDropFrame=nil end end)
-        themeDropOpen=false; return
+        closeThemeDrop(); return
     end
     themeDropOpen=true
     local dropW=200; local itemH=34
@@ -1193,7 +1357,7 @@ settSec:AddButton("Unload Script",function()
 end)
 
 
--- СНЕЖИНКИ
+-- (comment)
 local starList={}
 local function spawnStar()
     local vp=Camera.ViewportSize
@@ -1245,7 +1409,7 @@ track(RunService.RenderStepped:Connect(function(dt)
     end
 end))
 
--- ШИММЕР
+-- shimmer
 local shimmerFrameCount=0; local shimmerT=0
 track(RunService.Heartbeat:Connect(function(dt)
     shimmerFrameCount=shimmerFrameCount+1; if shimmerFrameCount%6~=0 then return end
@@ -1255,10 +1419,21 @@ track(RunService.Heartbeat:Connect(function(dt)
     recolorAll()
 end))
 
--- ВВОД
+-- (comment)
 local menuVisible=true
 track(UserInputService.InputBegan:Connect(function(i,gp)
     if gp or Settings.Unloaded then return end
+    -- закрыть дропдаун при клике вне него
+    if themeDropOpen and i.UserInputType==Enum.UserInputType.MouseButton1 then
+        local mp=getMousePos()
+        if themeDropFrame and themeDropFrame.Parent then
+            local ap=themeDropFrame.AbsolutePosition
+            local as=themeDropFrame.AbsoluteSize
+            if mp.X<ap.X or mp.X>ap.X+as.X or mp.Y<ap.Y or mp.Y>ap.Y+as.Y then
+                closeThemeDrop()
+            end
+        end
+    end
     if i.KeyCode==Enum.KeyCode.Escape then
         if capturingBind then
             local e=capturingBind; capturingBind=nil; e.key=nil
@@ -1270,7 +1445,14 @@ track(UserInputService.InputBegan:Connect(function(i,gp)
         local e=capturingBind; capturingBind=nil; e.key=i.KeyCode
         if e.cell and e.cell.Parent then
             e.cell.Text=tostring(i.KeyCode):gsub("Enum%.KeyCode%.","")
-            tween(e.cell,TweenInfo.new(0.15),{BackgroundColor3=Config.ToggleOff})
+            e.cell.BackgroundColor3=Color3.fromRGB(60,200,100)
+            e.cell.Size=UDim2.fromOffset(62,24)
+            tween(e.cell,TweenInfo.new(0.3,Enum.EasingStyle.Back,Enum.EasingDirection.Out),{Size=UDim2.fromOffset(58,22)})
+            task.delay(0.35,function()
+                if e.cell and e.cell.Parent then
+                    tween(e.cell,TweenInfo.new(0.25),{BackgroundColor3=Config.ToggleOff})
+                end
+            end)
         end
         if hudEnabled then rebuildHud() end; return
     end
@@ -1292,7 +1474,7 @@ end))
 
 local trigCooldown=0
 track(RunService.Heartbeat:Connect(function(dt)
-    if Settings.Unloaded or not Settings.TriggerBot then return end
+    if Settings.Unloaded or not Settings.TriggerBot or menuVisible then return end
     if Settings.KnifeCheck and isHoldingKnife() then return end
     trigCooldown=trigCooldown-dt
     if trigCooldown>0 then return end
