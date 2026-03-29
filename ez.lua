@@ -1584,6 +1584,37 @@ function rebuildPlayerListUI()
 end
 
 wlSec:AddButton("Refresh Player List",function() rebuildPlayerListUI() end)
+
+-- кнопки массового вайтлиста в одну строку
+local wlBulkRow=Instance.new("Frame",wlSec.Card)
+wlBulkRow.Size=UDim2.new(1,0,0,32); wlBulkRow.BackgroundTransparency=1; wlBulkRow.ZIndex=3
+local wlBulkList=Instance.new("UIListLayout",wlBulkRow)
+wlBulkList.FillDirection=Enum.FillDirection.Horizontal; wlBulkList.Padding=UDim.new(0,8)
+
+local function makeBulkBtn(parent,text,bg,cb)
+    local b=Instance.new("TextButton",parent)
+    b.Size=UDim2.fromOffset(140,32); b.BackgroundColor3=bg
+    b.Text=text; b.Font=Enum.Font.GothamBold; b.TextSize=13
+    b.TextColor3=Color3.fromRGB(255,255,255); b.AutoButtonColor=false; b.ZIndex=4
+    Instance.new("UICorner",b).CornerRadius=UDim.new(0,8)
+    b.MouseEnter:Connect(function() tween(b,TweenInfo.new(0.12),{BackgroundTransparency=0.25}) end)
+    b.MouseLeave:Connect(function() tween(b,TweenInfo.new(0.15),{BackgroundTransparency=0}) end)
+    b.MouseButton1Click:Connect(function() pcall(cb); rebuildPlayerListUI() end)
+    return b
+end
+
+makeBulkBtn(wlBulkRow,"WL All",Color3.fromRGB(40,130,70),function()
+    for _,ply in Players:GetPlayers() do
+        if ply~=LocalPlayer then _G.Whitelist[ply.UserId]=true end
+    end
+    showToast("All players whitelisted",Color3.fromRGB(80,220,130))
+end)
+
+makeBulkBtn(wlBulkRow,"Remove All WL",Color3.fromRGB(140,40,40),function()
+    table.clear(_G.Whitelist)
+    showToast("Whitelist cleared",Color3.fromRGB(220,80,80))
+end)
+
 rebuildPlayerListUI()
 
 Players.PlayerAdded:Connect(function() task.wait(1); rebuildPlayerListUI() end)
