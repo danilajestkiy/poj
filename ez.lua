@@ -1702,6 +1702,76 @@ UserInputService.InputEnded:Connect(function(i) if i.UserInputType==Enum.UserInp
 
 -- ─── Settings tab ────────────────────────────────────────────────────────────
 local settSec = Menu:CreateSection(tSettings, "Interface")
+
+-- ─── Menu Key Bind ───────────────────────────────────────────────────────────
+do
+    local bindRow = Instance.new("Frame", settSec.Card)
+    bindRow.Size = UDim2.new(1,0,0,36); bindRow.BackgroundTransparency = 1; bindRow.BorderSizePixel = 0; bindRow.ZIndex = 3
+    Instance.new("UICorner", bindRow).CornerRadius = UDim.new(0,8)
+    local bindStroke = Instance.new("UIStroke", bindRow)
+    bindStroke.Color = Config.Accent; bindStroke.Thickness = 1; bindStroke.Transparency = 1
+    bindStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border; trackAccent(bindStroke)
+
+    local bindLbl = Instance.new("TextLabel", bindRow)
+    bindLbl.Size = UDim2.new(1,-120,1,0); bindLbl.Text = "Menu Toggle Key"
+    bindLbl.Font = Enum.Font.Gotham; bindLbl.TextSize = 17
+    bindLbl.TextColor3 = Config.White; bindLbl.BackgroundTransparency = 1
+    bindLbl.TextXAlignment = Enum.TextXAlignment.Left; bindLbl.ZIndex = 3
+
+    local bindBtn = Instance.new("TextButton", bindRow)
+    bindBtn.Size = UDim2.fromOffset(100,26); bindBtn.Position = UDim2.new(1,-104,0.5,-13)
+    bindBtn.BackgroundColor3 = Color3.fromRGB(28,28,28); bindBtn.Text = tostring(Settings.MenuKey.Name)
+    bindBtn.Font = Enum.Font.GothamBold; bindBtn.TextSize = 13
+    bindBtn.TextColor3 = Config.Accent; bindBtn.AutoButtonColor = false; bindBtn.ZIndex = 4
+    Instance.new("UICorner", bindBtn).CornerRadius = UDim.new(0,7)
+    local bindBtnStroke = Instance.new("UIStroke", bindBtn)
+    bindBtnStroke.Color = Config.Accent; bindBtnStroke.Thickness = 1; bindBtnStroke.Transparency = 0.5
+    bindBtnStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border; trackAccent(bindBtnStroke)
+
+    local listening = false
+    local listenConn = nil
+
+    local function stopListen()
+        listening = false
+        if listenConn then listenConn:Disconnect(); listenConn = nil end
+        bindBtn.Text = tostring(Settings.MenuKey.Name)
+        tween(bindBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(28,28,28)})
+        tween(bindBtnStroke, TweenInfo.new(0.2), {Transparency = 0.5})
+    end
+
+    local function startListen()
+        listening = true
+        bindBtn.Text = "..."
+        tween(bindBtn, TweenInfo.new(0.18), {BackgroundColor3 = Config.Accent})
+        tween(bindBtnStroke, TweenInfo.new(0.18), {Transparency = 0})
+        listenConn = UserInputService.InputBegan:Connect(function(i, gp)
+            if gp then return end
+            if i.UserInputType ~= Enum.UserInputType.Keyboard then return end
+            -- Escape — отмена
+            if i.KeyCode == Enum.KeyCode.Escape then stopListen(); return end
+            Settings.MenuKey = i.KeyCode
+            stopListen()
+            showToast("Menu key: " .. tostring(i.KeyCode.Name), Config.Accent)
+        end)
+    end
+
+    bindBtn.MouseButton1Click:Connect(function()
+        if listening then stopListen() else startListen() end
+    end)
+    bindBtn.MouseEnter:Connect(function()
+        if not listening then tween(bindBtn, TweenInfo.new(0.14), {BackgroundColor3 = Color3.fromRGB(38,38,38)}) end
+        tween(bindLbl, TweenInfo.new(0.14), {TextColor3 = Config.Accent})
+        tween(bindStroke, TweenInfo.new(0.18), {Transparency = 0.6})
+        tween(bindRow, TweenInfo.new(0.14), {BackgroundTransparency = 0.72})
+    end)
+    bindBtn.MouseLeave:Connect(function()
+        if not listening then tween(bindBtn, TweenInfo.new(0.18), {BackgroundColor3 = Color3.fromRGB(28,28,28)}) end
+        tween(bindLbl, TweenInfo.new(0.18), {TextColor3 = Config.White})
+        tween(bindStroke, TweenInfo.new(0.22), {Transparency = 1})
+        tween(bindRow, TweenInfo.new(0.2), {BackgroundTransparency = 1})
+    end)
+end
+
 settSec:AddToggle("Show Keybind HUD",false,function(v)
     hudEnabled=v
     if v then
@@ -1792,6 +1862,8 @@ pcall(function() if not isfolder(cfgFolder) then makefolder(cfgFolder) end end)
 local CFG_KEYS = {"TriggerBot","TriggerDelay","TriggerDist","KnifeCheck","WallCheck","RMBOnly","ESP_Enabled","Box","HealthBar","Names","Distance","Tracers","MaxDistance","HitboxEnabled","HitboxSize","HitboxTransparency","FakeLag","FakeLagDelay","FakeLagInterval"}
 local function serializeConfig()
     local t={}; for _,k in CFG_KEYS do t[k]=Settings[k] end; t.__theme=currentThemeName
+    -- MenuKey сохраняем как строку (имя KeyCode)
+    t.__menuKey = tostring(Settings.MenuKey.Name)
     local parts={}
     for k,v in t do
         local vs; if type(v)=="boolean" then vs=v and "true" or "false" elseif type(v)=="number" then vs=tostring(v) elseif type(v)=="string" then vs='"'..v..'"' end
@@ -1811,6 +1883,24 @@ local function deserializeConfig(str)
 end
 local function applyConfig(data)
     for _,k in CFG_KEYS do if data[k]~=nil then Settings[k]=data[k] end end
+    -- Восстанавливаем MenuKey
+    if data.__menuKey then
+        local ok, kc = pcall(function() return Enum.KeyCode[data.__menuKey] end)
+        if ok and kc then
+            Settings.MenuKey = kc
+            -- Обновляем кнопку биндера если она уже создана
+            pcall(function()
+                for _, desc in settSec.Card:GetDescendants() do
+                    if desc:IsA("TextButton") and desc.Parent and desc.Parent:IsA("Frame") then
+                        local lbl = desc.Parent:FindFirstChildOfClass("TextLabel")
+                        if lbl and lbl.Text == "Menu Toggle Key" then
+                            desc.Text = data.__menuKey
+                        end
+                    end
+                end
+            end)
+        end
+    end
     if data.__theme and Themes[data.__theme] then applyThemeAndRecolor(data.__theme); if themeBtn and themeBtn.Parent then themeBtn.Text="Theme: "..data.__theme end end
     if uiControls then
         for _,k in {"TriggerBot","KnifeCheck","WallCheck","RMBOnly","HitboxEnabled","FakeLag","ESP_Enabled","Box","HealthBar","Names","Distance","Tracers"} do
